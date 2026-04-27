@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Control PWM</title>
+</head>
+<body>
+
+<h2>Control Ventilador</h2>
+
+<input type="range" min="0" max="255" id="slider">
+<p>Valor: <span id="valor">0</span></p>
+
+<button onclick="enviarPWM()">Enviar</button>
+
+<script>
+let slider = document.getElementById("slider");
+let valor = document.getElementById("valor");
+
+slider.oninput = function() {
+    valor.innerText = this.value;
+}
+
+function enviarPWM() {
+    let v = slider.value;
+
+    fetch('/set_pwm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pwm: parseInt(v) })
+    })
+    .then(res => res.json())
+    .then(data => console.log(data));
+}
+</script>
+
+</body>
+</html>
