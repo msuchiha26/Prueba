@@ -4,14 +4,14 @@ import os
 
 app = Flask(__name__)
 
-# Conexión a Supabase (PostgreSQL)
-conn = psycopg2.connect(
-    host=os.environ.get("DB_HOST"),
-    database=os.environ.get("DB_NAME"),
-    user=os.environ.get("DB_USER"),
-    password=os.environ.get("DB_PASSWORD"),
-    port=os.environ.get("DB_PORT")
-)
+def get_connection():
+    return psycopg2.connect(
+        host=os.environ.get("DB_HOST"),
+        database=os.environ.get("DB_NAME"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASSWORD"),
+        port=os.environ.get("DB_PORT")
+    )
 
 @app.route('/')
 def index():
@@ -19,22 +19,49 @@ def index():
 
 @app.route('/set_pwm', methods=['POST'])
 def set_pwm():
-    data = request.json
-    pwm = data['pwm']
+    try:
+        data = request.get_json()
+        pwm = data.get('pwm')
 
-    cursor = conn.cursor()
-    cursor.execute("UPDATE control SET pwm = %s WHERE id = 1", (pwm,))
-    conn.commit()
+        conn = get_connection()
+        cursor = conn.cursor()
 
-    return jsonify({"status": "ok", "pwm": pwm})
+        cursor.execute(
+            "UPDATE control SET pwm = %s WHERE id = 1",
+            (pwm,)
+        )
+
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({"status": "ok", "pwm": pwm})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route('/get_pwm', methods=['GET'])
 def get_pwm():
-    cursor = conn.cursor()
-    cursor.execute("SELECT pwm FROM control WHERE id = 1")
-    pwm = cursor.fetchone()[0]
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
 
-    return jsonify({"pwm": pwm})
+        cursor.execute("SELECT pwm FROM control WHERE id = 1")
+        result = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if result is None:
+            return jsonify({"error": "No hay datos"}), 404
+
+        return jsonify({"pwm": result[0]})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run()
